@@ -73,8 +73,8 @@ TEMPLATES = [
 WSGI_APPLICATION = 'onegames.wsgi.application'
 
 # Database configuration
-# Use SQLite by default, PostgreSQL when DB env vars are set
-if os.environ.get('DB_NAME') and os.environ.get('DB_PASSWORD'):
+# Use SQLite by default, PostgreSQL when USE_POSTGRES=1 and DB vars are set properly
+if os.environ.get('USE_POSTGRES') == '1' and os.environ.get('DB_NAME'):
     # PostgreSQL configuration (cPanel)
     DATABASES = {
         'default': {
