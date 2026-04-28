@@ -37,11 +37,10 @@ def get_games_keyboard(games, language='en'):
     return InlineKeyboardMarkup(keyboard)
 
 
-def get_subscription_plans_keyboard(plans, language='en'):
-    """Subscription plans keyboard."""
+def get_subscription_plans_keyboard(plans_with_prices, language='en'):
+    """Subscription plans keyboard. expects list of (plan, price) tuples."""
     keyboard = []
-    for plan in plans:
-        price = plan.calculate_price()
+    for plan, price in plans_with_prices:
         btn_text = f"{plan.get_name(language)} - {price:.2f} ETB"
         keyboard.append([InlineKeyboardButton(btn_text, callback_data=f"plan_{plan.id}")])
     keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data="menu_main")])

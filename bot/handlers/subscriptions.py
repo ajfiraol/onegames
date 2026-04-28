@@ -47,7 +47,7 @@ def sync_get_profile(telegram_id):
 
 
 def sync_get_plans():
-    return list(SubscriptionPlan.objects.filter(is_active=True))
+    return list(SubscriptionPlan.objects.filter(is_active=True).prefetch_related('games'))
 
 
 def sync_get_plan(plan_id):
@@ -56,6 +56,11 @@ def sync_get_plan(plan_id):
 
 def sync_get_subscription(profile):
     return profile.get_active_subscription()
+
+
+def sync_calculate_plan_prices(plans):
+    """Calculate prices for all plans synchronously."""
+    return [(plan, plan.calculate_price()) for plan in plans]
 
 
 async def subscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -77,8 +82,11 @@ async def subscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(MESSAGES[language]['no_plans'])
         return
 
+    # Calculate prices synchronously
+    plans_with_prices = await loop.run_in_executor(None, sync_calculate_plan_prices, plans)
+
     text = MESSAGES[language]['subscribe']
-    keyboard = get_subscription_plans_keyboard(plans, language)
+    keyboard = get_subscription_plans_keyboard(plans_with_prices, language)
     await update.message.reply_text(text, reply_markup=keyboard, parse_mode='Markdown')
 
 

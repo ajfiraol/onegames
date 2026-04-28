@@ -134,13 +134,13 @@ async def game_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if has_sub:
             for strategy in strategies:
                 if strategy.is_premium:
-                    text += f"\n\n📌 *{strategy.get_title(language)}*:\n{strategy.get_content(language)}"
+                    text += f"\n\n{strategy.get_title(language)}:\n{strategy.get_content(language)}"
         else:
             text += f"\n\n{MESSAGES[language]['subscribe_to_access']}"
 
     # Add visual guide if available
     if game.visual_guide:
-        text += f"\n\n📖 Visual Guide: {game.visual_guide.url}"
+        text += f"\n\nVisual Guide: {game.visual_guide.url}"
 
     keyboard = get_back_keyboard("back_games", language)
-    await query.message.reply_text(text, reply_markup=keyboard, parse_mode='Markdown')
+    await query.message.reply_text(text, reply_markup=keyboard)
