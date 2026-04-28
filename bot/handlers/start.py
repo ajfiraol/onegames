@@ -90,10 +90,13 @@ async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     loop = asyncio.get_event_loop()
     profile = await loop.run_in_executor(None, sync_update_profile, telegram_id, language)
 
-    # Send confirmation
+    # Send confirmation (use answer_callback_query + new message instead of edit)
     text = MESSAGES[language]['language_updated']
     keyboard = get_main_menu_keyboard(language)
-    await query.edit_message_text(text, reply_markup=keyboard)
-    await query.message.reply_text(MESSAGES[language]['welcome_back'].format(
-        name=profile.display_name
-    ), reply_markup=keyboard, parse_mode='Markdown')
+    await query.message.reply_text(
+        f"{text}\n\n" + MESSAGES[language]['welcome_back'].format(
+            name=profile.display_name
+        ),
+        reply_markup=keyboard,
+        parse_mode='Markdown'
+    )
