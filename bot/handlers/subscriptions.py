@@ -129,7 +129,7 @@ async def plan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         plan = await loop.run_in_executor(None, sync_get_plan, plan_id)
     except SubscriptionPlan.DoesNotExist:
-        await query.edit_message_text("Plan not found!")
+        await query.message.reply_text("Plan not found!")
         return
 
     # Calculate price
@@ -148,7 +148,7 @@ async def plan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     keyboard = get_payment_keyboard(language)
-    await query.edit_message_text(text, reply_markup=keyboard, parse_mode='Markdown')
+    await query.message.reply_text(text, reply_markup=keyboard, parse_mode='Markdown')
 
 
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):

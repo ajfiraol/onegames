@@ -91,7 +91,7 @@ async def game_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         profile = await loop.run_in_executor(None, sync_get_profile, telegram_id)
     except UserProfile.DoesNotExist:
-        await query.edit_message_text("Please start with /start first!")
+        await query.message.reply_text("Please start with /start first!")
         return
 
     language = profile.language
@@ -99,7 +99,7 @@ async def game_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         game = await loop.run_in_executor(None, sync_get_game, game_id)
     except Game.DoesNotExist:
-        await query.edit_message_text("Game not found!")
+        await query.message.reply_text("Game not found!")
         return
 
     # Build game detail message
@@ -137,4 +137,4 @@ async def game_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text += f"\n\n📖 Visual Guide: {game.visual_guide.url}"
 
     keyboard = get_back_keyboard("back_games", language)
-    await query.edit_message_text(text, reply_markup=keyboard, parse_mode='Markdown')
+    await query.message.reply_text(text, reply_markup=keyboard, parse_mode='Markdown')

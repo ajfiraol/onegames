@@ -39,7 +39,7 @@ async def payment_done_callback(update: Update, context: ContextTypes.DEFAULT_TY
     try:
         profile = await loop.run_in_executor(None, sync_get_profile, telegram_id)
     except UserProfile.DoesNotExist:
-        await query.edit_message_text("Please start with /start first!")
+        await query.message.reply_text("Please start with /start first!")
         return
 
     language = profile.language
@@ -47,14 +47,14 @@ async def payment_done_callback(update: Update, context: ContextTypes.DEFAULT_TY
     payment_amount = context.user_data.get('payment_amount')
 
     if not selected_plan_id or not payment_amount:
-        await query.edit_message_text("No plan selected. Please select a plan first.")
+        await query.message.reply_text("No plan selected. Please select a plan first.")
         return
 
     # Get plan
     try:
         plan = await loop.run_in_executor(None, sync_get_plan, selected_plan_id)
     except SubscriptionPlan.DoesNotExist:
-        await query.edit_message_text("Plan not found!")
+        await query.message.reply_text("Plan not found!")
         return
 
     # Show payment instructions with reference input
@@ -73,8 +73,11 @@ async def payment_done_callback(update: Update, context: ContextTypes.DEFAULT_TY
     context.user_data['payment_amount'] = payment_amount
 
     keyboard = get_back_keyboard('menu_main', language)
-    await query.edit_message_text(text, reply_markup=keyboard, parse_mode='Markdown')
-    await query.message.reply_text(MESSAGES[language]['enter_reference'])
+    await query.message.reply_text(
+        f"{text}\n\n{MESSAGES[language]['enter_reference']}",
+        reply_markup=keyboard,
+        parse_mode='Markdown'
+    )
 
 
 async def handle_payment_reference(update: Update, context: ContextTypes.DEFAULT_TYPE):
