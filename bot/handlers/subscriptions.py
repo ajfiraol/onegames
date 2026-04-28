@@ -1,4 +1,5 @@
 """Subscription command handler."""
+import asyncio
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -41,19 +42,34 @@ MESSAGES = {
 }
 
 
+def sync_get_profile(telegram_id):
+    return UserProfile.objects.get(telegram_id=telegram_id)
+
+
+def sync_get_plans():
+    return list(SubscriptionPlan.objects.filter(is_active=True))
+
+
+def sync_get_plan(plan_id):
+    return SubscriptionPlan.objects.get(id=plan_id, is_active=True)
+
+
 async def subscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /subscribe command."""
     telegram_id = update.effective_user.id
+    loop = asyncio.get_event_loop()
+
     try:
-        profile = UserProfile.objects.get(telegram_id=telegram_id)
+        profile = await loop.run_in_executor(None, sync_get_profile, telegram_id)
     except UserProfile.DoesNotExist:
         await update.message.reply_text("Please start with /start first!")
         return
 
     language = profile.language
-    plans = SubscriptionPlan.objects.filter(is_active=True)
 
-    if not plans.exists():
+    plans = await loop.run_in_executor(None, sync_get_plans)
+
+    if not plans:
         await update.message.reply_text(MESSAGES[language]['no_plans'])
         return
 
@@ -65,8 +81,10 @@ async def subscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def my_subscription_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /my_subscription command."""
     telegram_id = update.effective_user.id
+    loop = asyncio.get_event_loop()
+
     try:
-        profile = UserProfile.objects.get(telegram_id=telegram_id)
+        profile = await loop.run_in_executor(None, sync_get_profile, telegram_id)
     except UserProfile.DoesNotExist:
         await update.message.reply_text("Please start with /start first!")
         return
@@ -95,7 +113,7 @@ async def plan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     callback_data = query.data
 
     if callback_data == 'menu_main':
-        await bot.show_main_menu(update, context)
+        await show_main_menu(update, context)
         return
 
     if not callback_data.startswith('plan_'):
@@ -103,11 +121,13 @@ async def plan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     plan_id = int(callback_data.split('_')[1])
     telegram_id = update.effective_user.id
-    profile = UserProfile.objects.get(telegram_id=telegram_id)
+    loop = asyncio.get_event_loop()
+
+    profile = await loop.run_in_executor(None, sync_get_profile, telegram_id)
     language = profile.language
 
     try:
-        plan = SubscriptionPlan.objects.get(id=plan_id, is_active=True)
+        plan = await loop.run_in_executor(None, sync_get_plan, plan_id)
     except SubscriptionPlan.DoesNotExist:
         await query.edit_message_text("Plan not found!")
         return
@@ -134,7 +154,9 @@ async def plan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Show main menu."""
     telegram_id = update.effective_user.id
-    profile = UserProfile.objects.get(telegram_id=telegram_id)
+    loop = asyncio.get_event_loop()
+
+    profile = await loop.run_in_executor(None, sync_get_profile, telegram_id)
     language = profile.language
 
     from bot.handlers.start import start_command

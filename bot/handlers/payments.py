@@ -1,6 +1,7 @@
 """Payment command handler."""
+import asyncio
 from telegram import Update
-from telegram.ext import ContextTypes, ConversationHandler
+from telegram.ext import ContextTypes
 
 from core.models import UserProfile
 from subscriptions.models import SubscriptionPlan, Subscription
@@ -10,14 +11,33 @@ from bot.handlers.subscriptions import MESSAGES
 from django.conf import settings
 
 
+def sync_get_profile(telegram_id):
+    return UserProfile.objects.get(telegram_id=telegram_id)
+
+
+def sync_get_plan(plan_id):
+    return SubscriptionPlan.objects.get(id=plan_id, is_active=True)
+
+
+def sync_create_payment(user, amount, reference):
+    return Payment.objects.create(
+        user=user,
+        amount=amount,
+        transaction_reference=reference,
+        status=Payment.Status.PENDING,
+    )
+
+
 async def payment_done_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle payment done callback - ask for transaction reference."""
     query = update.callback_query
     await query.answer()
 
     telegram_id = update.effective_user.id
+    loop = asyncio.get_event_loop()
+
     try:
-        profile = UserProfile.objects.get(telegram_id=telegram_id)
+        profile = await loop.run_in_executor(None, sync_get_profile, telegram_id)
     except UserProfile.DoesNotExist:
         await query.edit_message_text("Please start with /start first!")
         return
@@ -32,7 +52,7 @@ async def payment_done_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     # Get plan
     try:
-        plan = SubscriptionPlan.objects.get(id=selected_plan_id, is_active=True)
+        plan = await loop.run_in_executor(None, sync_get_plan, selected_plan_id)
     except SubscriptionPlan.DoesNotExist:
         await query.edit_message_text("Plan not found!")
         return
@@ -52,7 +72,7 @@ async def payment_done_callback(update: Update, context: ContextTypes.DEFAULT_TY
     context.user_data['payment_plan_id'] = selected_plan_id
     context.user_data['payment_amount'] = payment_amount
 
-    keyboard = get_payment_keyboard(language)
+    keyboard = get_back_keyboard('menu_main', language)
     await query.edit_message_text(text, reply_markup=keyboard, parse_mode='Markdown')
     await query.message.reply_text(MESSAGES[language]['enter_reference'])
 
@@ -64,9 +84,10 @@ async def handle_payment_reference(update: Update, context: ContextTypes.DEFAULT
 
     telegram_id = update.effective_user.id
     reference = update.message.text.strip()
+    loop = asyncio.get_event_loop()
 
     try:
-        profile = UserProfile.objects.get(telegram_id=telegram_id)
+        profile = await loop.run_in_executor(None, sync_get_profile, telegram_id)
     except UserProfile.DoesNotExist:
         await update.message.reply_text("Please start with /start first!")
         return
@@ -76,11 +97,8 @@ async def handle_payment_reference(update: Update, context: ContextTypes.DEFAULT
     amount = context.user_data.get('payment_amount')
 
     # Create payment record
-    payment = Payment.objects.create(
-        user=profile,
-        amount=amount,
-        transaction_reference=reference,
-        status=Payment.Status.PENDING,
+    payment = await loop.run_in_executor(
+        None, sync_create_payment, profile, amount, reference
     )
 
     # Clear user data

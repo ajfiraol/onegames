@@ -1,4 +1,5 @@
 """Games command handler."""
+import asyncio
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -26,20 +27,40 @@ MESSAGES = {
 }
 
 
+def sync_get_profile(telegram_id):
+    return UserProfile.objects.get(telegram_id=telegram_id)
+
+
+def sync_get_games():
+    return list(Game.objects.filter(is_active=True))
+
+
+def sync_get_game(game_id):
+    return Game.objects.get(id=game_id, is_active=True)
+
+
+def sync_get_strategies(game):
+    return list(GameStrategy.objects.filter(game=game).order_by('order'))
+
+
 async def games_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /games command."""
-    # Get user profile
     telegram_id = update.effective_user.id
+
+    # Get user profile
+    loop = asyncio.get_event_loop()
     try:
-        profile = UserProfile.objects.get(telegram_id=telegram_id)
+        profile = await loop.run_in_executor(None, sync_get_profile, telegram_id)
     except UserProfile.DoesNotExist:
         await update.message.reply_text("Please start with /start first!")
         return
 
     language = profile.language
-    games = Game.objects.filter(is_active=True)
 
-    if not games.exists():
+    # Get games
+    games = await loop.run_in_executor(None, sync_get_games)
+
+    if not games:
         await update.message.reply_text(MESSAGES[language]['no_games'])
         return
 
@@ -65,9 +86,10 @@ async def game_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     game_id = int(callback_data.split('_')[1])
     telegram_id = update.effective_user.id
+    loop = asyncio.get_event_loop()
 
     try:
-        profile = UserProfile.objects.get(telegram_id=telegram_id)
+        profile = await loop.run_in_executor(None, sync_get_profile, telegram_id)
     except UserProfile.DoesNotExist:
         await query.edit_message_text("Please start with /start first!")
         return
@@ -75,7 +97,7 @@ async def game_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     language = profile.language
 
     try:
-        game = Game.objects.get(id=game_id, is_active=True)
+        game = await loop.run_in_executor(None, sync_get_game, game_id)
     except Game.DoesNotExist:
         await query.edit_message_text("Game not found!")
         return
@@ -91,8 +113,8 @@ async def game_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     # Add strategies
-    strategies = GameStrategy.objects.filter(game=game).order_by('order')
-    if strategies.exists():
+    strategies = await loop.run_in_executor(None, sync_get_strategies, game)
+    if strategies:
         strategy_texts = []
         for strategy in strategies:
             premium_tag = MESSAGES[language]['premium'] if strategy.is_premium else ''
@@ -104,7 +126,6 @@ async def game_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Check subscription for premium content
         if profile.has_active_subscription():
-            # Show premium content
             for strategy in strategies:
                 if strategy.is_premium:
                     text += f"\n\n📌 *{strategy.get_title(language)}*:\n{strategy.get_content(language)}"
@@ -115,5 +136,5 @@ async def game_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if game.visual_guide:
         text += f"\n\n📖 Visual Guide: {game.visual_guide.url}"
 
-    keyboard = get_back_keyboard(f"back_games", language)
+    keyboard = get_back_keyboard("back_games", language)
     await query.edit_message_text(text, reply_markup=keyboard, parse_mode='Markdown')
