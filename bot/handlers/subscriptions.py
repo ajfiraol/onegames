@@ -54,6 +54,10 @@ def sync_get_plan(plan_id):
     return SubscriptionPlan.objects.get(id=plan_id, is_active=True)
 
 
+def sync_get_subscription(profile):
+    return profile.get_active_subscription()
+
+
 async def subscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /subscribe command."""
     telegram_id = update.effective_user.id
@@ -90,7 +94,7 @@ async def my_subscription_command(update: Update, context: ContextTypes.DEFAULT_
         return
 
     language = profile.language
-    subscription = profile.get_active_subscription()
+    subscription = await loop.run_in_executor(None, sync_get_subscription, profile)
 
     if subscription:
         text = MESSAGES[language]['subscription_active'].format(

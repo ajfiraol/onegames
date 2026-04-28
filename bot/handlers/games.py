@@ -43,6 +43,11 @@ def sync_get_strategies(game):
     return list(GameStrategy.objects.filter(game=game).order_by('order'))
 
 
+def sync_has_subscription(profile):
+    """Check if profile has active subscription."""
+    return profile.has_active_subscription()
+
+
 async def games_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /games command."""
     telegram_id = update.effective_user.id
@@ -125,11 +130,12 @@ async def game_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         # Check subscription for premium content
-        if profile.has_active_subscription():
+        has_sub = await loop.run_in_executor(None, sync_has_subscription, profile)
+        if has_sub:
             for strategy in strategies:
                 if strategy.is_premium:
                     text += f"\n\n📌 *{strategy.get_title(language)}*:\n{strategy.get_content(language)}"
-        elif not profile.has_active_subscription():
+        else:
             text += f"\n\n{MESSAGES[language]['subscribe_to_access']}"
 
     # Add visual guide if available
