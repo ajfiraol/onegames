@@ -21,8 +21,15 @@ MESSAGES = {
 }
 
 
-def sync_get_or_create(profile_cls, telegram_id, **kwargs):
-    return profile_cls.objects.get_or_create(telegram_id=telegram_id, defaults=kwargs)
+def sync_get_or_create(telegram_id, username, first_name, last_name):
+    return UserProfile.objects.get_or_create(
+        telegram_id=telegram_id,
+        defaults={
+            'username': username,
+            'first_name': first_name,
+            'last_name': last_name,
+        }
+    )
 
 
 def sync_update_profile(telegram_id, language):
@@ -43,8 +50,8 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Get or create user profile (run sync ORM in executor)
     loop = asyncio.get_event_loop()
     profile, created = await loop.run_in_executor(
-        None, sync_get_or_create, UserProfile, telegram_id,
-        username=user.username, first_name=user.first_name, last_name=user.last_name
+        None, sync_get_or_create, telegram_id,
+        user.username, user.first_name, user.last_name
     )
 
     if created:
