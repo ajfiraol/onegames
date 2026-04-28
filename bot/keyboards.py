@@ -17,7 +17,7 @@ def get_main_menu_keyboard(language='en'):
     """Main menu keyboard."""
     menu_text = {
         'en': ['🎮 Games', '📋 My Subscription', '💳 Subscribe'],
-        'am': ['🎮 �AMES', '📋 የኔ ዕቃ', '💳 ቅድም ዘምን']
+        'am': ['🎮 ጽድታት', '📋 የኔ ዕቃ', '💳 ቅድም ዘምን']
     }
     buttons = [
         [KeyboardButton(menu_text[language][0])],
